@@ -1,6 +1,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-FROM jupyter/pyspark-notebook
+ARG BASE_CONTAINER=jupyter/pyspark-notebook
+FROM $BASE_CONTAINER
 
 LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
 
@@ -15,30 +16,27 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     fonts-dejavu \
     gfortran \
-    gcc && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    gcc && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-USER $NB_USER
+USER $NB_UID
 
 # R packages
 RUN conda install --quiet --yes \
-    'r-base=3.3.2' \
-    'r-irkernel=0.7*' \
-    'r-ggplot2=2.2*' \
-    'r-sparklyr=0.5*' \
-    'r-rcurl=1.95*' && \
-    conda clean -tipsy && \
-    fix-permissions $CONDA_DIR
-
-# Apache Toree kernel
-RUN pip install --no-cache-dir \
-    https://dist.apache.org/repos/dist/dev/incubator/toree/0.2.0/snapshots/dev1/toree-pip/toree-0.2.0.dev1.tar.gz \
+    'r-base=4.0.3' \
+    'r-ggplot2=3.3*' \
+    'r-irkernel=1.1*' \
+    'r-rcurl=1.98*' \
+    'r-sparklyr=1.5*' \
     && \
-    jupyter toree install --sys-prefix && \
-    fix-permissions $CONDA_DIR
+    conda clean --all -f -y && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
 
 # Spylon-kernel
 RUN conda install --quiet --yes 'spylon-kernel=0.4*' && \
-    conda clean -tipsy && \
+    conda clean --all -f -y && \
     python -m spylon_kernel install --sys-prefix && \
-    fix-permissions $CONDA_DIR
+    rm -rf "/home/${NB_USER}/.local" && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
