@@ -130,7 +130,7 @@ RUN $CONDA_DIR/envs/${conda_env}/bin/python -m ipykernel install --user --name=$
     fix-permissions /home/$NB_USER
 
 # any additional pip installs can be added by uncommenting the following line
-# RUN $CONDA_DIR/envs/${conda_env}/bin/pip install 
+# RUN $CONDA_DIR/envs/${conda_env}/bin/pip install
 
 # prepend conda environment to path
 ENV PATH $CONDA_DIR/envs/${conda_env}/bin:$PATH
@@ -527,4 +527,27 @@ RUN apt-get update && \
 USER $NB_UID
 
 RUN pip install --quiet --no-cache-dir auto-sklearn
+```
+
+## Enable Delta Lake in Spark notebooks
+
+Please note that the [Delta Lake](https://delta.io/) packages are only available for Spark version > `3.0`. By adding the properties to `spark-defaults.conf`, the user no longer needs to enable Delta support in each notebook.
+
+```dockerfile
+FROM jupyter/pyspark-notebook:latest
+
+ARG DELTA_CORE_VERSION="0.8.0"
+
+USER root
+
+RUN echo "spark.jars.packages io.delta:delta-core_2.12:${DELTA_CORE_VERSION}" >> $SPARK_HOME/conf/spark-defaults.conf && \
+    echo 'spark.sql.extensions io.delta.sql.DeltaSparkSessionExtension' >> $SPARK_HOME/conf/spark-defaults.conf && \
+    echo 'spark.sql.catalog.spark_catalog org.apache.spark.sql.delta.catalog.DeltaCatalog' >> $SPARK_HOME/conf/spark-defaults.conf
+
+USER $NB_UID
+
+# Run pyspark and exit to trigger the download of the delta lake jars
+RUN echo "quit()" > /tmp/init-delta.py && \
+    spark-submit /tmp/init-delta.py && \
+    rm /tmp/init-delta.py
 ```
